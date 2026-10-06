@@ -1,7 +1,6 @@
 //! the error handling functions.
 
 use thiserror::Error;
-use tokio::task::JoinError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -27,7 +26,7 @@ pub enum Error {
     Init(String),
 
     #[error("An error occurred while joining threads: {0}")]
-    JoinError(#[from] JoinError),
+    JoinError(String),
 
     #[error("An unknown error: {0}")]
     Other(String),

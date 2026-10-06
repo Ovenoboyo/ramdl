@@ -38,12 +38,16 @@ pub struct Attributes {
     /// The names of the genres associated with the album.
     pub genre_names: Vec<String>,
     /// Indicates whether the album is marked as a compilation.
+    #[serde(default)]
     pub is_compilation: bool,
     /// Indicates whether the album is complete.
+    #[serde(default)]
     pub is_complete: bool,
     /// Indicates whether the response delivered the album as an Apple Digital Master.
+    #[serde(default)]
     pub is_mastered_for_itunes: bool,
     /// Indicates whether the album contains a single song.
+    #[serde(default)]
     pub is_single: bool,
     /// The localized name of the album.
     pub name: String,
@@ -54,6 +58,7 @@ pub struct Attributes {
     /// The release date of the album, when known.
     pub release_date: Option<String>,
     /// The number of tracks for the album.
+    #[serde(default)]
     pub track_count: i32,
     /// The Universal Product Code for the album.
     pub upc: Option<String>,

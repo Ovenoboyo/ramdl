@@ -16,7 +16,7 @@ pub struct Songs {
     /// The attributes for the song.
     pub attributes: Attributes,
     /// The relationships for the song.
-    pub relationships: Relationships,
+    pub relationships: Option<Relationships>,
     /// Information about the request or response.
     pub meta: Option<Meta>,
 }
@@ -44,16 +44,21 @@ pub struct Attributes {
     /// The Recording Industry Association of America (RIAA) rating of the content. The possible values for this rating are clean and explicit. No value means no rating.
     pub content_rating: Option<String>,
     /// The disc number the song appears on.
+    #[serde(default)]
     pub disc_number: u32,
     /// The approximate length of the song in milliseconds.
+    #[serde(default)]
     pub duration_in_millis: u64,
     /// The notes about the song that appear in the Apple Music catalog.
     pub editorial_notes: Option<EditorialNotes>,
     /// The genre names the song is associated with.
+    #[serde(default)]
     pub genre_names: Vec<String>,
     /// Indicates whether the song has lyrics available in the Apple Music catalog. If true, the song has lyrics available; otherwise, it doesn't.
+    #[serde(default)]
     pub has_lyrics: bool,
     /// Indicates whether the response delivered the song as an [Apple Digital Master](https://www.apple.com/apple-music/apple-digital-masters/).
+    #[serde(default)]
     pub is_apple_digital_master: bool,
     /// The International Standard Recording Code (ISRC) for the song.
     pub isrc: Option<String>,
@@ -68,6 +73,7 @@ pub struct Attributes {
     /// When present, this attribute indicates that the song is available to play with an Apple Music subscription. The value map may be used to initiate playback. Previews of the song audio may be available with or without an Apple Music subscription.
     pub play_params: Option<PlayParameters>,
     /// The preview assets for the song.
+    #[serde(default)]
     pub previews: Vec<Preview>,
     /// The release date of the song, when known, in YYYY-MM-DD or YYYY format. Prerelease songs may have an expected release date in the future.
     pub release_date: Option<String>,
@@ -78,7 +84,9 @@ pub struct Attributes {
     /// (Classical music only) The name of the associated work.
     pub work_name: Option<String>,
     pub has_time_synced_lyrics: Option<bool>,
+    #[serde(default)]
     pub is_vocal_attenuation_allowed: bool,
+    #[serde(default)]
     pub is_mastered_for_itunes: bool,
 
     pub audio_locale: Option<String>,

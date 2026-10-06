@@ -102,32 +102,36 @@ pub struct Playlist {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaylistAttributes {
-    pub last_modified_date: String,
+    pub last_modified_date: Option<String>,
+    #[serde(default)]
     pub supports_sing: bool,
-    pub description: Description,
-    pub artwork: Artwork,
-    pub play_params: PlayParams,
+    pub description: Option<Description>,
+    pub artwork: Option<Artwork>,
+    pub play_params: Option<PlayParams>,
     pub url: String,
+    #[serde(default)]
     pub has_collaboration: bool,
-    pub curator_name: String,
+    pub curator_name: Option<String>,
+    #[serde(default)]
     pub audio_traits: Vec<String>,
     pub name: String,
+    #[serde(default)]
     pub is_chart: bool,
-    pub playlist_type: String,
-    pub editorial_notes: EditorialNotes,
+    pub playlist_type: Option<String>,
+    pub editorial_notes: Option<EditorialNotes>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct Description {
-    pub standard: String,
-    pub short: String,
+    pub standard: Option<String>,
+    pub short: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct EditorialNotes {
-    pub name: String,
-    pub standard: String,
-    pub short: String,
+    pub name: Option<String>,
+    pub standard: Option<String>,
+    pub short: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -135,15 +139,16 @@ pub struct Artist {
     pub id: String,
     pub href: String,
     pub attributes: ArtistAttributes,
-    pub relationships: ArtistRelationships,
+    pub relationships: Option<ArtistRelationships>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ArtistAttributes {
     pub name: String,
+    #[serde(default)]
     pub genre_names: Vec<String>,
-    pub artwork: Artwork,
+    pub artwork: Option<Artwork>,
     pub url: String,
 }
 

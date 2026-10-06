@@ -8,14 +8,14 @@ pub struct Playlists {
     /// The identifier for the playlist.
     pub id: String,
     /// This value is always playlists.
-    #[serde(rename = "type")]
-    pub type_: String,
+    #[serde(rename = "type", default)]
+    pub type_: Option<String>,
     /// The relative location for the playlist resource.
     pub href: String,
     /// The attributes for the playlist.
     pub attributes: Attributes,
-    // /// The relationships for the playlist.
-    pub relationships: Relationships,
+    /// The relationships for the playlist.
+    pub relationships: Option<Relationships>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -24,42 +24,36 @@ pub struct Attributes {
     /// The playlist artwork.
     pub artwork: Option<Artwork>,
     /// The display name of the curator.
-    pub curator_name: String,
+    pub curator_name: Option<String>,
     /// A description of the playlist.
     pub description: Option<DescriptionAttribute>,
     /// Indicates whether the playlist represents a popularity chart.
+    #[serde(default)]
     pub is_chart: bool,
     /// The date the playlist was last modified.
-    pub last_modified_date: String,
+    #[serde(default)]
+    pub last_modified_date: Option<String>,
     /// The localized name of the playlist.
     pub name: String,
-    /// The type of playlist. Possible values are:
-    ///
-    /// Editorial: A playlist created by an Apple Music curator.
-    ///
-    /// External: A playlist created by a non-Apple curator or brand.
-    ///
-    /// Personal-mix: A personalized playlist for an Apple Music user.
-    ///
-    /// Replay: A personalized Apple Music Replay playlist for an Apple Music user.
-    ///
-    /// User-shared: A playlist created and shared by an Apple Music user.
-    pub playlist_type: String,
+    /// The type of playlist.
+    #[serde(default)]
+    pub playlist_type: Option<String>,
     /// The value map may be used to initiate playback of available tracks in the playlist.
-    pub play_params: PlayParameters,
+    pub play_params: Option<PlayParameters>,
     /// The URL for sharing the playlist in Apple Music.
     pub url: String,
     /// (Extended) The resource types that are present in the tracks of the playlists.  
     /// Possible Values: music-videos, songs
+    #[serde(default)]
     pub track_types: Vec<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct DescriptionAttribute {
     /// An abbreviated description to show inline or when the content appears alongside other content.
-    pub short: String,
+    pub short: Option<String>,
     /// A description to show when the content is prominently displayed.
-    pub standard: String,
+    pub standard: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -83,12 +77,11 @@ pub struct Tracks {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-#[serde(tag = "type")]
+#[serde(untagged)]
 pub enum TrackData {
-    #[serde(rename = "songs")]
     Songs(Songs),
-    #[serde(rename = "music-videos")]
     MusicVideos(MusicVideos),
+    Other(serde_json::Value),
 }
 
 // #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]

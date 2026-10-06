@@ -8,13 +8,17 @@ pub struct Artwork {
     /// The maximum width available for the image.
     pub width: i32,
     /// The primary text color used if the background color gets displayed.
-    pub text_color1: String,
+    #[serde(default)]
+    pub text_color1: Option<String>,
     /// The secondary text color used if the background color gets displayed.
-    pub text_color2: String,
+    #[serde(default)]
+    pub text_color2: Option<String>,
     /// The tertiary text color used if the background color gets displayed.
-    pub text_color3: String,
+    #[serde(default)]
+    pub text_color3: Option<String>,
     /// The final post-tertiary text color used if the background color gets displayed.
-    pub text_color4: String,
+    #[serde(default)]
+    pub text_color4: Option<String>,
     /// The URL to request the image asset. {w}x{h}must precede image filename, as placeholders for the width and height values as described above. For example, {w}x{h}bb.jpeg).
     pub url: String,
     pub has_p3: Option<bool>,

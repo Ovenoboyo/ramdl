@@ -50,11 +50,11 @@ impl StreamInfo {
         let webplayback = webplayback
             .song_list
             .first()
-            .unwrap()
+            .ok_or_else(|| crate::error::Error::Other("Empty song list in webplayback".to_string()))?
             .assets
             .iter()
             .find(|t| t.flavor == "28:ctrp256")
-            .unwrap();
+            .ok_or_else(|| crate::error::Error::Other("Flavor 28:ctrp256 asset not found".to_string()))?;
 
         let m3u8 = reqwest::get(&webplayback.url)
             .await?

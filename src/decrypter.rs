@@ -27,16 +27,25 @@ pub async fn get_decrypt_key(
     // pssh_box.add_key_id(key_id);
     pssh_box.pssh_data = pssh_obj;
     pssh_box.version = 0;
-    let pssh_obj = Pssh::from_bytes(&pssh_box.to_bytes()).unwrap();
+    let pssh_obj = Pssh::from_bytes(&pssh_box.to_bytes())
+        .map_err(|e| crate::error::Error::Decrypt(format!("PSSH parse error: {:?}", e)))?;
     let cdm_license_request = session
         .get_license_request(pssh_obj, LicenseType::STREAMING)
-        .unwrap();
+        .map_err(|e| crate::error::Error::Decrypt(format!("License request error: {:?}", e)))?;
+
+    let challenge = cdm_license_request
+        .challenge()
+        .map_err(|e| crate::error::Error::Decrypt(format!("Challenge generation failed: {:?}", e)))?;
 
     let license_message = apple_music_downloader
-        .get_widevine_license(id, pssh, cdm_license_request.challenge().unwrap())
+        .get_widevine_license(id, pssh, challenge)
         .await?;
-    let keys = cdm_license_request.get_keys(&license_message).unwrap();
-    let key = keys.first_of_type(widevine::KeyType::CONTENT).unwrap();
+    let keys = cdm_license_request
+        .get_keys(&license_message)
+        .map_err(|e| crate::error::Error::Decrypt(format!("Failed to parse keys: {:?}", e)))?;
+    let key = keys
+        .first_of_type(widevine::KeyType::CONTENT)
+        .map_err(|e| crate::error::Error::Decrypt(format!("No CONTENT key found: {:?}", e)))?;
     let key_hex = hex::encode(key.key.clone());
     Ok(key_hex)
 }

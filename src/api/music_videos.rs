@@ -33,14 +33,18 @@ pub struct Attributes {
     /// Possible Values: clean, explicit
     pub content_rating: Option<String>,
     /// The duration of the music video in milliseconds.
+    #[serde(default)]
     pub duration_in_millis: i64,
     /// The editorial notes for the music video.
     pub editorial_notes: Option<EditorialNotes>,
     /// The music video’s associated genres.
+    #[serde(default)]
     pub genre_names: Vec<String>,
     /// Whether the music video has 4K content.
+    #[serde(default)]
     pub has_4k: bool,
     ///  Whether the music video has HDR10-encoded content.
+    #[serde(default)]
     pub has_hdr: bool,
     /// The International Standard Recording Code (ISRC) for the music video.
     pub isrc: Option<String>,
@@ -50,6 +54,7 @@ pub struct Attributes {
     /// The value map may be used to initiate playback. Previews of the music video may be available with or without an Apple Music subscription.
     pub play_params: Option<PlayParameters>,
     /// The preview assets for the music video.
+    #[serde(default)]
     pub previews: Vec<Preview>,
     /// The release date of the music video, when known, in YYYY-MM-DD or YYYY format.
     /// Prerelease music videos may have an expected release date in the future.
