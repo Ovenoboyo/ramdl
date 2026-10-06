@@ -97,9 +97,6 @@ impl AppleMusicDownloader {
     /// let apple_music_downloader = AppleMusicDownloader::new_with_media_user_token("Asc+xxx");
     /// ```
     pub async fn new_with_media_user_token(media_user_token: &str) -> Result<Self> {
-        if media_user_token.is_empty() {
-            return Err(Error::Init("Media user token is empty".to_string()));
-        }
         let mut apple_music_downloader = AppleMusicDownloader {
             media_user_token: media_user_token.to_string(),
             ..Default::default()
@@ -108,7 +105,9 @@ impl AppleMusicDownloader {
         apple_music_downloader.create_client()?;
         apple_music_downloader.init_headers()?;
         apple_music_downloader.create_client()?;
-        apple_music_downloader.init_storefront_language().await?;
+        if !apple_music_downloader.media_user_token.is_empty() {
+            let _ = apple_music_downloader.init_storefront_language().await;
+        }
         Ok(apple_music_downloader)
     }
 
@@ -121,23 +120,44 @@ impl AppleMusicDownloader {
             .await?
             .text()
             .await?;
-        let js_re = Regex::new(r#"(?<=index)(.*?)(?=\.js")"#).unwrap();
-        let js_file = js_re
-            .find(&home_page)?
-            .map(|value| value.as_str())
-            .ok_or(Error::Init("Parsing home page error".to_string()))?;
-        let js_res = reqwest::get(format!(
-            "{APPLE_MUSIC_HOMEPAGE_URL}/assets/index{js_file}.js"
-        ))
-        .await
-        .unwrap();
-        let js_res_text = js_res.text().await.unwrap();
 
-        let token_re = Regex::new(r#"(?=eyJh)(.*?)(?=")"#).unwrap();
-        let token = token_re
-            .find(&js_res_text)?
-            .map(|value| value.as_str())
-            .ok_or(Error::Init("Parsing home page error".to_string()))?;
+        let js_path = if let Some(pos) = home_page.find("/assets/index~") {
+            let rest = &home_page[pos..];
+            if let Some(end) = rest.find(".js") {
+                &rest[..end + 3]
+            } else {
+                return Err(Error::Init("Parsing index.js path error".to_string()));
+            }
+        } else {
+            return Err(Error::Init("index~.js not found on home page".to_string()));
+        };
+
+        let js_res = self
+            .client
+            .get(format!("{APPLE_MUSIC_HOMEPAGE_URL}{js_path}"))
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        let mut token = None;
+        let mut from = 0usize;
+        while let Some(at) = js_res[from..].find("eyJ") {
+            let start = from + at;
+            let len = js_res[start..]
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+                .count();
+            let candidate = &js_res[start..start + len];
+            if candidate.matches('.').count() == 2 && candidate.len() >= 100 {
+                token = Some(candidate);
+                break;
+            }
+            from = start + 3;
+        }
+
+        let token = token.ok_or_else(|| Error::Init("Failed to find JWT token in JS bundle".to_string()))?;
+
         self.headers.insert(
             reqwest::header::AUTHORIZATION,
             format!("Bearer {token}").parse().unwrap(),
@@ -243,13 +263,13 @@ impl AppleMusicDownloader {
             .json::<serde_json::Value>()
             .await?;
         let songs: Vec<search::Song> =
-            serde_json::from_value(res["results"]["songs"]["data"].clone())?;
+            serde_json::from_value(res["results"]["songs"]["data"].clone()).unwrap_or_default();
         let albums: Vec<search::Album> =
-            serde_json::from_value(res["results"]["albums"]["data"].clone())?;
+            serde_json::from_value(res["results"]["albums"]["data"].clone()).unwrap_or_default();
         let artists: Vec<search::Artist> =
-            serde_json::from_value(res["results"]["artists"]["data"].clone())?;
+            serde_json::from_value(res["results"]["artists"]["data"].clone()).unwrap_or_default();
         let playlists: Vec<search::Playlist> =
-            serde_json::from_value(res["results"]["playlists"]["data"].clone())?;
+            serde_json::from_value(res["results"]["playlists"]["data"].clone()).unwrap_or_default();
         Ok(search::SearchResults {
             songs,
             albums,
@@ -305,11 +325,9 @@ impl AppleMusicDownloader {
                 .to_string(),
             )
             .send()
-            .await
-            .unwrap()
+            .await?
             .json::<webplayback::WebPlayBack>()
-            .await
-            .unwrap();
+            .await?;
         Ok(response)
     }
 
@@ -321,9 +339,120 @@ impl AppleMusicDownloader {
     ) -> Result<String> {
         let cdm = widevine::Cdm::new(self.device.clone());
         let decryption_key = decrypter::get_decrypt_key(&cdm, &stream_info.pssh, track_id, self)
-            .await
-            .unwrap();
+            .await?;
         Ok(decryption_key)
+    }
+
+    /// Gets the album information.
+    pub async fn get_album(&self, album_id: &str) -> Result<albums::Albums> {
+        let store_front = self.store_front.clone();
+        let res = self
+            .client
+            .get(format!(
+                "{AMP_API_URL}/v1/catalog/{store_front}/albums/{album_id}",
+            ))
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
+        let album: albums::Albums = serde_json::from_value(res["data"][0].clone())?;
+        Ok(album)
+    }
+
+    /// Gets the album tracks.
+    pub async fn get_album_tracks(&self, album_id: &str) -> Result<Vec<songs::Songs>> {
+        let store_front = self.store_front.clone();
+        let res = self
+            .client
+            .get(format!(
+                "{AMP_API_URL}/v1/catalog/{store_front}/albums/{album_id}/tracks?limit=100",
+            ))
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
+        let tracks: Vec<songs::Songs> =
+            serde_json::from_value(res["data"].clone()).unwrap_or_default();
+        Ok(tracks)
+    }
+
+    /// Gets the playlist information.
+    pub async fn get_playlist(&self, playlist_id: &str) -> Result<playlists::Playlists> {
+        let store_front = self.store_front.clone();
+        let res = self
+            .client
+            .get(format!(
+                "{AMP_API_URL}/v1/catalog/{store_front}/playlists/{playlist_id}",
+            ))
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
+        let playlist: playlists::Playlists = serde_json::from_value(res["data"][0].clone())?;
+        Ok(playlist)
+    }
+
+    /// Gets the playlist tracks.
+    pub async fn get_playlist_tracks(&self, playlist_id: &str) -> Result<Vec<songs::Songs>> {
+        let store_front = self.store_front.clone();
+        let res = self
+            .client
+            .get(format!(
+                "{AMP_API_URL}/v1/catalog/{store_front}/playlists/{playlist_id}/tracks?limit=100",
+            ))
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
+        let tracks: Vec<songs::Songs> =
+            serde_json::from_value(res["data"].clone()).unwrap_or_default();
+        Ok(tracks)
+    }
+
+    /// Gets artist top songs.
+    pub async fn get_artist_top_songs(&self, artist_id: &str) -> Result<Vec<songs::Songs>> {
+        let store_front = self.store_front.clone();
+        let res = self
+            .client
+            .get(format!(
+                "{AMP_API_URL}/v1/catalog/{store_front}/artists/{artist_id}/view/top-songs?limit=50",
+            ))
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
+        let songs: Vec<songs::Songs> =
+            serde_json::from_value(res["data"].clone()).unwrap_or_default();
+        Ok(songs)
+    }
+
+    /// Gets catalog song charts (recommendations).
+    pub async fn get_charts(&self) -> Result<Vec<songs::Songs>> {
+        let store_front = self.store_front.clone();
+        let res = self
+            .client
+            .get(format!(
+                "{AMP_API_URL}/v1/catalog/{store_front}/charts?types=songs&limit=25",
+            ))
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
+        let songs: Vec<songs::Songs> =
+            serde_json::from_value(res["results"]["songs"][0]["data"].clone()).unwrap_or_default();
+        Ok(songs)
+    }
+
+    pub fn client(&self) -> &reqwest::Client {
+        &self.client
+    }
+
+    pub fn store_front(&self) -> &str {
+        &self.store_front
+    }
+
+    pub fn media_user_token(&self) -> &str {
+        &self.media_user_token
     }
 }
 
